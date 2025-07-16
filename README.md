@@ -15,7 +15,7 @@ This repository provides a robust, extensible framework for evaluating the Linea
 - **Designate a working directory outside this repo** for all git operations and deployments (e.g., `/Users/zig/azigler/ai-code-review/eval-workspace`).
 - Edit `run_tests.sh` and set the `WORKSPACE_DIR` variable to this directory.
 - Edit `eval_test.sh` and set the `default_owner` and `default_repo` variables to your own values.
-- **Set your GitHub personal access token** in your shell, for `eval_test.sh`:
+- **Set your GitHub personal access token** in your shell:
 
   ```bash
   export GITHUB_TOKEN=your_token_here

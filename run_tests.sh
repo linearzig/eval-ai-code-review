@@ -2,21 +2,28 @@
 
 # LinearB AI Code Review Testing Suite Automation Script
 # Inspired by benchmarking/run.sh
+#
+# IMPORTANT:
+#   - You must set WORKSPACE_DIR in this script to a directory outside this repo (default: $WORKSPACE_DIR)
+#   - You must set your GITHUB_TOKEN environment variable for API access (required for opening PRs and evaluation)
 
 set -e  # Exit on any error
 
 # Set the working directory for all git operations (must be outside this repo)
 
 # !!!
-# CHANGE THIS TO YOUR OWN WORKSPACE DIRECTORY
+# CHANGE THESE TO YOUR OWN VALUES
 # !!!
 WORKSPACE_DIR="/Users/zig/azigler/ai-code-review/eval-workspace"
+REPO_OWNER="linearzig"
+REPO_NAME="eval-ai-code-review"
 
 
 
 PROJECTS_DIR="projects"
 SCENARIOS_DIR="scenarios"
 DESCRIPTIONS_DIR="scenario-descriptions"
+GITHUB_API="https://api.github.com"
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,6 +55,7 @@ show_help() {
   echo "IMPORTANT:"
   echo "  - You must set WORKSPACE_DIR in this script to a directory outside this repo (default: $WORKSPACE_DIR)"
   echo "  - All git operations and deployments will happen in WORKSPACE_DIR"
+  echo "  - You must set your GITHUB_TOKEN environment variable for API access (required for opening PRs and evaluation)"
   echo ""
   echo "Examples:"
   echo "  $0 --deploy-project hello-world"
@@ -78,6 +86,24 @@ list_scenarios() {
   done
 }
 
+open_pr() {
+  local branch_name="$1"
+  local title="$2"
+  local body="$3"
+  print_status "Opening PR for branch $branch_name ..."
+  local pr_json=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+    -d "{\"title\": \"$title\", \"head\": \"$branch_name\", \"base\": \"main\", \"body\": \"$body\"}" \
+    "$GITHUB_API/repos/$REPO_OWNER/$REPO_NAME/pulls")
+  local pr_url=$(echo "$pr_json" | grep '"html_url":' | head -1 | sed -E 's/.*"html_url": "([^"]+)".*/\1/')
+  if [[ "$pr_url" == https://* ]]; then
+    print_success "Opened PR: $pr_url"
+    echo "$pr_url"
+  else
+    print_error "Failed to open PR. Response: $pr_json"
+    return 1
+  fi
+}
+
 # Deploy a base project to a new branch
 deploy_project() {
   local project_name="$1"
@@ -91,6 +117,10 @@ deploy_project() {
 
   print_status "Preparing workspace at $WORKSPACE_DIR"
   mkdir -p "$WORKSPACE_DIR"
+  if [ ! -d "$WORKSPACE_DIR/.git" ]; then
+    print_status "Workspace is not a git repo. Cloning fresh copy..."
+    git clone https://github.com/linearzig/eval-ai-code-review "$WORKSPACE_DIR"
+  fi
   cd "$WORKSPACE_DIR"
 
   git checkout main
@@ -101,6 +131,14 @@ deploy_project() {
   git commit -m "feat: deploy base project $project_name"
   git push -u origin "$branch_name"
   print_success "Deployed $project_name to branch $branch_name"
+
+  # Open PR
+  local pr_url=$(open_pr "$branch_name" "Deploy base project $project_name" "Automated PR for $branch_name")
+  if [ -n "$pr_url" ]; then
+    # Evaluate PR
+    print_status "Running eval_test.sh for $pr_url ..."
+    "$OLDPWD/eval_test.sh" "$pr_url"
+  fi
   cd - > /dev/null
 }
 
@@ -129,6 +167,10 @@ deploy_scenario() {
 
   print_status "Preparing workspace at $WORKSPACE_DIR"
   mkdir -p "$WORKSPACE_DIR"
+  if [ ! -d "$WORKSPACE_DIR/.git" ]; then
+    print_status "Workspace is not a git repo. Cloning fresh copy..."
+    git clone https://github.com/linearzig/eval-ai-code-review "$WORKSPACE_DIR"
+  fi
   cd "$WORKSPACE_DIR"
 
   git checkout main
@@ -140,9 +182,14 @@ deploy_scenario() {
   git commit -m "feat: apply scenario $scenario_name to $project_name"
   git push -u origin "$branch_name"
   print_success "Deployed scenario $scenario_name on $project_name to branch $branch_name"
-  print_status "[Stub] AI review and scoring would be triggered here."
-  print_status "[Stub] Expected review from $description_path:"
-  cat "$OLDPWD/$description_path"
+
+  # Open PR
+  local pr_url=$(open_pr "$branch_name" "Apply scenario $scenario_name to $project_name" "Automated PR for $branch_name")
+  if [ -n "$pr_url" ]; then
+    # Evaluate PR
+    print_status "Running eval_test.sh for $pr_url ..."
+    "$OLDPWD/eval_test.sh" "$pr_url"
+  fi
   cd - > /dev/null
 }
 
