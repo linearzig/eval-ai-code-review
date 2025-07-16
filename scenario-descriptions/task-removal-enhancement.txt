@@ -1,0 +1,9 @@
+PROJECT: hello-world
+VERSION
+2025-07-16: Initial version. Scenario introduces an enhancement to the task removal logic in the task manager example.
+
+DESCRIPTION
+This scenario updates the task manager's removeTask function to allow removing the last task by checking if the index is less than or equal to tasks.length. The intention is to improve usability by making the function more flexible for users who want to remove tasks at the end of the list.
+
+EXPECTED REVIEW
+A thorough code review should notice that allowing index == tasks.length in Array.splice can result in no-op or unexpected behavior, as valid indices for removal are 0 to tasks.length - 1. The review should recommend ensuring the index is strictly less than tasks.length to avoid potential confusion or silent errors. A good review would suggest updating the condition to 'index >= 0 && index < tasks.length'. 
