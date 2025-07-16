@@ -33,10 +33,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Print helpers
-print_status() { echo -e "${BLUE}[INFO]${NC} $1"; }
-print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_status() { echo -e "[INFO] $1" >&2; }
+print_success() { echo -e "[SUCCESS] $1" >&2; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_error() { echo -e "[ERROR] $1" >&2; }
 
 # Usage/help message
 show_help() {
@@ -67,7 +67,9 @@ show_help() {
 
 # Generate a random moniker for branch uniqueness
 random_moniker() {
-  echo $(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
+  local digits=$(jot -r -n 3 0 9 | tr -d '\n')
+  local letter=$(jot -r -c 1 a z)
+  echo "${digits}${letter}"
 }
 
 # List all projects
@@ -86,13 +88,15 @@ list_scenarios() {
   done
 }
 
+# Update open_pr to accept base branch as an argument
 open_pr() {
   local branch_name="$1"
   local title="$2"
   local body="$3"
-  print_status "Opening PR for branch $branch_name ..."
+  local base_branch="${4:-main}"
+  print_status "Opening PR for branch $branch_name into $base_branch ..."
   local pr_json=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-    -d "{\"title\": \"$title\", \"head\": \"$branch_name\", \"base\": \"main\", \"body\": \"$body\"}" \
+    -d "{\"title\": \"$title\", \"head\": \"$branch_name\", \"base\": \"$base_branch\", \"body\": \"$body\"}" \
     "$GITHUB_API/repos/$REPO_OWNER/$REPO_NAME/pulls")
   local pr_url=$(echo "$pr_json" | grep '"html_url":' | head -1 | sed -E 's/.*"html_url": "([^"]+)".*/\1/')
   if [[ "$pr_url" == https://* ]]; then
@@ -132,13 +136,7 @@ deploy_project() {
   git push -u origin "$branch_name"
   print_success "Deployed $project_name to branch $branch_name"
 
-  # Open PR
-  local pr_url=$(open_pr "$branch_name" "Deploy base project $project_name" "Automated PR for $branch_name")
-  if [ -n "$pr_url" ]; then
-    # Evaluate PR
-    print_status "Running eval_test.sh for $pr_url ..."
-    "$OLDPWD/eval_test.sh" "$pr_url"
-  fi
+  # No PR or eval_test.sh for base project deployment
   cd - > /dev/null
 }
 
@@ -151,6 +149,7 @@ deploy_scenario() {
   local project_path="$PROJECTS_DIR/$project_name"
   local scenario_path="$SCENARIOS_DIR/$scenario_name"
   local description_path="$DESCRIPTIONS_DIR/$scenario_name.txt"
+  local base_branch="project-${project_name}"
 
   if [ ! -d "$project_path" ]; then
     print_error "Project folder not found: $project_path"
@@ -173,8 +172,9 @@ deploy_scenario() {
   fi
   cd "$WORKSPACE_DIR"
 
-  git checkout main
-  git pull origin main
+  git fetch origin "$base_branch"
+  git checkout "$base_branch"
+  git pull origin "$base_branch"
   git checkout -b "$branch_name"
   rsync -av --exclude='.DS_Store' --exclude='.git' "$OLDPWD/$project_path/" ./
   rsync -av --exclude='.DS_Store' --exclude='.git' "$OLDPWD/$scenario_path/" ./
@@ -183,12 +183,12 @@ deploy_scenario() {
   git push -u origin "$branch_name"
   print_success "Deployed scenario $scenario_name on $project_name to branch $branch_name"
 
-  # Open PR
-  local pr_url=$(open_pr "$branch_name" "Apply scenario $scenario_name to $project_name" "Automated PR for $branch_name")
+  # Open PR with base branch as project branch
+  local pr_url=$(open_pr "$branch_name" "Apply scenario $scenario_name to $project_name" "Automated PR for $branch_name" "$base_branch")
   if [ -n "$pr_url" ]; then
     # Evaluate PR
     print_status "Running eval_test.sh for $pr_url ..."
-    "$OLDPWD/eval_test.sh" "$pr_url"
+    "$OLDPWD/eval_test.sh" "$pr_url" "$project_name" "$scenario_name"
   fi
   cd - > /dev/null
 }

@@ -26,17 +26,22 @@ print_error() { echo -e "[ERROR] $1"; }
 print_success() { echo -e "[SUCCESS] $1"; }
 
 # Check args
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 <branch-name|pr-url>"
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <branch-name|pr-url> [project_name] [scenario_name]"
   exit 1
 fi
 INPUT="$1"
+USER_PROJECT_NAME="${2:-}"
+USER_SCENARIO_NAME="${3:-}"
 
 if [ -z "$GITHUB_TOKEN" ]; then
   print_error "GITHUB_TOKEN environment variable not set."
   exit 1
 fi
 
+# Set RESULTS_DIR to the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RESULTS_DIR="$SCRIPT_DIR/results"
 mkdir -p "$RESULTS_DIR"
 
 IS_PR_URL=false
@@ -48,10 +53,12 @@ if [[ "$INPUT" =~ ^https://github.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
   REPO_OWNER="${BASH_REMATCH[1]}"
   REPO_NAME="${BASH_REMATCH[2]}"
   PR_NUMBER="${BASH_REMATCH[3]}"
-  BRANCH_NAME="[from-PR-$PR_NUMBER]"
   IS_PR_URL=true
   PR_URL="$INPUT"
-  print_status "Detected PR URL: owner=$REPO_OWNER, repo=$REPO_NAME, pr=$PR_NUMBER"
+  # Fetch the actual source branch name (head.ref) from the GitHub API
+  PR_API_JSON=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$GITHUB_API/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER")
+  BRANCH_NAME=$(echo "$PR_API_JSON" | jq -r '.head.ref')
+  print_status "Detected PR URL: owner=$REPO_OWNER, repo=$REPO_NAME, pr=$PR_NUMBER, branch=$BRANCH_NAME"
 else
   REPO_OWNER="$default_owner"
   REPO_NAME="$default_repo"
@@ -67,8 +74,16 @@ else
   fi
   print_status "Found PR #$PR_NUMBER for branch $BRANCH_NAME."
   PR_URL="https://github.com/$REPO_OWNER/$REPO_NAME/pull/$PR_NUMBER"
-  # Try to extract project and scenario name from branch name
+fi
+# Set project and scenario names from user args if provided, otherwise parse from branch name
+if [ -n "$USER_PROJECT_NAME" ]; then
+  PROJECT_NAME="$USER_PROJECT_NAME"
+else
   PROJECT_NAME=$(echo "$BRANCH_NAME" | awk -F'-' '{print $1}')
+fi
+if [ -n "$USER_SCENARIO_NAME" ]; then
+  SCENARIO_NAME="$USER_SCENARIO_NAME"
+else
   SCENARIO_NAME=$(echo "$BRANCH_NAME" | awk -F'-' '{OFS="-"; print $2,$3,$4,$5,$6}' | sed 's/-$//')
 fi
 
@@ -136,10 +151,7 @@ INLINE_COMMENTS=$(echo "$INLINE_COMMENTS_JSON" | jq '[.[] | {user: .user.login, 
 EXPECTED_REVIEW=""
 SCORE="[N/A]"
 PASS_FAIL="[N/A]"
-if [ "$IS_PR_URL" = true ]; then
-  SCENARIO_DESC="[not_applicable]"
-  EXPECTED_REVIEW="[Scenario comparison not available for PR URL input. Run with a scenario branch for comparison.]"
-else
+if [ -n "$SCENARIO_NAME" ] && [ "$SCENARIO_NAME" != "unknown" ]; then
   SCENARIO_DESC="scenario-descriptions/$SCENARIO_NAME.txt"
   if [ -f "$SCENARIO_DESC" ]; then
     EXPECTED_REVIEW=$(awk '/^EXPECTED REVIEW/{flag=1; next} /^$/{flag=0} flag' "$SCENARIO_DESC")
@@ -148,11 +160,18 @@ else
   else
     EXPECTED_REVIEW="[Scenario description not found: $SCENARIO_DESC]"
   fi
+else
+  SCENARIO_DESC="[not_applicable]"
+  EXPECTED_REVIEW="[Scenario comparison not available for this input. Run with a scenario branch or provide scenario name for comparison.]"
 fi
 
 # 5. Write results to file
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-RESULT_FILE="$RESULTS_DIR/$BRANCH_NAME.json"
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+# Sanitize branch and repo names for filenames
+SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr '/' '_')
+SAFE_BASE_BRANCH=$(echo "$BASE_BRANCH" | tr '/' '_' | tr -c '[:alnum:]_-' '_')
+SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '/' '_' | tr -c '[:alnum:]_-' '_')
+RESULT_FILE="$RESULTS_DIR/${TIMESTAMP}__${SAFE_REPO_NAME}__${SAFE_BASE_BRANCH}__${SAFE_BRANCH_NAME}.json"
 cat > "$RESULT_FILE" <<EOF
 {
   "branch": "$BRANCH_NAME",
