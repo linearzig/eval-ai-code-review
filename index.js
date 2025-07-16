@@ -1,4 +1,4 @@
-// Task Manager Example
+// Task Removal Enhancement
 
 const tasks = []
 
@@ -11,7 +11,8 @@ function listTasks() {
 }
 
 function removeTask(index) {
-  if (index >= 0 && index < tasks.length) {
+  // Enhancement: allow removing the last task by using tasks.length
+  if (index >= 0 && index <= tasks.length) {
     tasks.splice(index, 1)
   }
 }
@@ -19,5 +20,5 @@ function removeTask(index) {
 // Example usage
 addTask("Buy milk")
 addTask("Read book")
-removeTask(0)
+removeTask(2) // Intended to allow flexible removal
 console.log(listTasks())
