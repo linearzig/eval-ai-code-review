@@ -9,5 +9,6 @@ automations:
     if:
       - {{ not pr.draft }}
       - {{ pr.author | match(list=['github-actions', '_bot_', 'dependabot', '[bot]']) | nope }}
+      - {{ 'no-linearb' not in pr.title | lower }}
     run:
       - action: code-review@v1
