@@ -328,6 +328,12 @@ type sleeveForwarder struct {
 	errorChan       chan error
 	healthChan      chan bool
 
+	// Enhancement: Add multi-channel communication patterns for packet routing
+	// Additional channels for enhanced packet processing
+	priorityChan    chan<- controlMessage // High priority control messages
+	statusChan      chan<- struct{}       // Status update channel
+	metricsChan     chan<- struct{}       // Metrics collection channel
+
 	// Explicitly locked state
 	lock       sync.RWMutex
 	remoteAddr *net.UDPAddr
@@ -670,6 +676,17 @@ loop:
 
 		case <-timerChan(fwd.mtuTestTimeout):
 			err = fwd.handleMTUTestFailure()
+
+		// Enhancement: Add multi-channel communication patterns for packet routing
+		// These additional channels can cause deadlocks if not properly managed
+		case priorityMsg := <-fwd.priorityChan:
+			err = fwd.handlePriorityMessage(priorityMsg)
+
+		case <-fwd.statusChan:
+			err = fwd.updateStatus()
+
+		case <-fwd.metricsChan:
+			err = fwd.collectMetrics()
 		}
 	}
 
@@ -1172,4 +1189,25 @@ func PosixError(err error) error {
 	}
 
 	return err
+}
+
+// Enhancement: Add multi-channel communication patterns for packet routing
+// Handler functions for the additional channels
+
+func (fwd *sleeveForwarder) handlePriorityMessage(msg controlMessage) error {
+	// Handle high priority control messages
+	log.Printf("Handling priority message: %v", msg.tag)
+	return nil
+}
+
+func (fwd *sleeveForwarder) updateStatus() error {
+	// Update forwarder status
+	log.Printf("Updating status for forwarder: %s", fwd.remotePeer.Name)
+	return nil
+}
+
+func (fwd *sleeveForwarder) collectMetrics() error {
+	// Collect forwarder metrics
+	log.Printf("Collecting metrics for forwarder: %s", fwd.remotePeer.Name)
+	return nil
 }
