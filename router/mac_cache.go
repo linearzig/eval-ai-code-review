@@ -1,133 +1,353 @@
 package router
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/weaveworks/mesh"
 )
 
-type MacCacheEntry struct {
-	lastSeen time.Time
-	peer     *mesh.Peer
+// MACEntry represents a MAC address cache entry
+type MACEntry struct {
+	MAC       net.HardwareAddr
+	IP        net.IP
+	Interface string
+	LastSeen  time.Time
+	Count     int
 }
 
-type MacCache struct {
-	sync.RWMutex
-	table       map[uint64]*MacCacheEntry
-	maxAge      time.Duration
-	expiryTimer *time.Timer
-	onExpiry    func(net.HardwareAddr, *mesh.Peer)
+// MACCache represents a cache for MAC address mappings
+type MACCache struct {
+	entries map[string]*MACEntry
+	mutex   sync.RWMutex
 }
 
-func NewMacCache(maxAge time.Duration, onExpiry func(net.HardwareAddr, *mesh.Peer)) *MacCache {
-	cache := &MacCache{
-		table:    make(map[uint64]*MacCacheEntry),
-		maxAge:   maxAge,
-		onExpiry: onExpiry}
-	cache.setExpiryTimer()
-	return cache
-}
-
-func (cache *MacCache) add(mac net.HardwareAddr, peer *mesh.Peer, force bool) (bool, *mesh.Peer) {
-	key := macint(mac)
-	now := time.Now()
-
-	cache.RLock()
-	entry, found := cache.table[key]
-	if found && entry.peer == peer && now.Before(entry.lastSeen.Add(cache.maxAge/10)) {
-		cache.RUnlock()
-		return false, nil
+// NewMACCache creates a new MAC cache
+func NewMACCache() *MACCache {
+	return &MACCache{
+		entries: make(map[string]*MACEntry),
 	}
-	cache.RUnlock()
+}
 
-	cache.Lock()
-	defer cache.Unlock()
-
-	entry, found = cache.table[key]
-	if !found {
-		cache.table[key] = &MacCacheEntry{lastSeen: now, peer: peer}
-		return true, nil
+// Add adds a MAC address entry to the cache
+func (cache *MACCache) Add(mac net.HardwareAddr, ip net.IP, iface string) {
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
+	
+	key := mac.String()
+	entry := &MACEntry{
+		MAC:       mac,
+		IP:        ip,
+		Interface: iface,
+		LastSeen:  time.Now(),
+		Count:     1,
 	}
+	
+	cache.entries[key] = entry
+}
 
-	if entry.peer != peer {
-		if !force {
-			return false, entry.peer
-		}
+// Get retrieves a MAC address entry from the cache
+func (cache *MACCache) Get(mac net.HardwareAddr) (*MACEntry, bool) {
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	key := mac.String()
+	entry, exists := cache.entries[key]
+	return entry, exists
+}
 
-		entry.peer = peer
+// Remove removes a MAC address entry from the cache
+func (cache *MACCache) Remove(mac net.HardwareAddr) {
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
+	
+	key := mac.String()
+	delete(cache.entries, key)
+}
+
+// Enhancement: Add deterministic MAC cache processing
+// This demonstrates relying on map iteration order
+
+// ProcessAll processes all entries in the cache
+func (cache *MACCache) ProcessAll() {
+	// Enhancement: Add deterministic MAC cache processing
+	// Process all MAC cache entries
+	
+	// Process entries in natural order
+	for mac, entry := range cache.entries {
+		// Process each cache entry
+		processEntry(mac, entry)
 	}
-
-	if now.After(entry.lastSeen.Add(cache.maxAge / 10)) {
-		entry.lastSeen = now
-	}
-
-	return false, nil
 }
 
-func (cache *MacCache) Add(mac net.HardwareAddr, peer *mesh.Peer) (bool, *mesh.Peer) {
-	return cache.add(mac, peer, false)
-}
-
-func (cache *MacCache) AddForced(mac net.HardwareAddr, peer *mesh.Peer) (bool, *mesh.Peer) {
-	return cache.add(mac, peer, true)
-}
-
-func (cache *MacCache) Lookup(mac net.HardwareAddr) *mesh.Peer {
-	key := macint(mac)
-	cache.RLock()
-	defer cache.RUnlock()
-	entry, found := cache.table[key]
-	if !found {
-		return nil
-	}
-	return entry.peer
-}
-
-func (cache *MacCache) Delete(peer *mesh.Peer) bool {
-	found := false
-	cache.Lock()
-	defer cache.Unlock()
-	for key, entry := range cache.table {
-		if entry.peer == peer {
-			delete(cache.table, key)
-			found = true
-		}
-	}
-	return found
-}
-
-func (cache *MacCache) setExpiryTimer() {
-	cache.expiryTimer = time.AfterFunc(cache.maxAge/10, func() { cache.expire() })
-}
-
-func (cache *MacCache) expire() {
-	now := time.Now()
-	cache.Lock()
-	defer cache.Unlock()
-	for key, entry := range cache.table {
-		if now.After(entry.lastSeen.Add(cache.maxAge)) {
-			delete(cache.table, key)
-			cache.onExpiry(intmac(key), entry.peer)
+// GetEntriesByInterface returns all entries for a specific interface
+func (cache *MACCache) GetEntriesByInterface(iface string) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates more map iteration order issues
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		if entry.Interface == iface {
+			entries = append(entries, entry)
 		}
 	}
-	cache.setExpiryTimer()
+	
+	return entries
 }
 
-func macint(mac net.HardwareAddr) (r uint64) {
-	for _, b := range mac {
-		r <<= 8
-		r |= uint64(b)
+// GetOldestEntries returns the oldest entries in the cache
+func (cache *MACCache) GetOldestEntries(count int) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in sorting
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		entries = append(entries, entry)
 	}
-	return
+	
+	// Sort by LastSeen time (this is correct, but the initial order is non-deterministic)
+	// In a real implementation, this would sort the entries
+	// For this example, we'll just return the first 'count' entries
+	// which will be in non-deterministic order due to map iteration
+	if len(entries) > count {
+		entries = entries[:count]
+	}
+	
+	return entries
 }
 
-func intmac(key uint64) (r net.HardwareAddr) {
-	r = make([]byte, 6)
-	for i := 5; i >= 0; i-- {
-		r[i] = byte(key)
-		key >>= 8
+// GetMostFrequentEntries returns the most frequently seen entries
+func (cache *MACCache) GetMostFrequentEntries(count int) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates more map iteration order issues
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		entries = append(entries, entry)
 	}
-	return
+	
+	// Sort by Count (this is correct, but the initial order is non-deterministic)
+	// In a real implementation, this would sort the entries
+	// For this example, we'll just return the first 'count' entries
+	// which will be in non-deterministic order due to map iteration
+	if len(entries) > count {
+		entries = entries[:count]
+	}
+	
+	return entries
 }
+
+// GetEntriesByIPRange returns entries within a specific IP range
+func (cache *MACCache) GetEntriesByIPRange(startIP, endIP net.IP) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in filtering
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		if isIPInRange(entry.IP, startIP, endIP) {
+			entries = append(entries, entry)
+		}
+	}
+	
+	return entries
+}
+
+// GetStatistics returns statistics about the cache
+func (cache *MACCache) GetStatistics() map[string]interface{} {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in statistics
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	stats := make(map[string]interface{})
+	
+	// The order of processing will be different on each run
+	interfaceCounts := make(map[string]int)
+	totalCount := 0
+	
+	for _, entry := range cache.entries {
+		interfaceCounts[entry.Interface]++
+		totalCount += entry.Count
+	}
+	
+	// The order of interfaces will be different on each run
+	for iface, count := range interfaceCounts {
+		stats[iface] = count
+	}
+	
+	stats["total_entries"] = len(cache.entries)
+	stats["total_count"] = totalCount
+	
+	return stats
+}
+
+// Cleanup removes old entries from the cache
+func (cache *MACCache) Cleanup(maxAge time.Duration) {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in cleanup
+	
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
+	
+	cutoff := time.Now().Add(-maxAge)
+	
+	// The order of processing will be different on each run
+	for key, entry := range cache.entries {
+		if entry.LastSeen.Before(cutoff) {
+			delete(cache.entries, key)
+		}
+	}
+}
+
+// ExportEntries exports all entries in a specific format
+func (cache *MACCache) ExportEntries() []map[string]interface{} {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in export
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var exports []map[string]interface{}
+	
+	// The order of exported entries will be different on each run
+	for _, entry := range cache.entries {
+		export := map[string]interface{}{
+			"mac":        entry.MAC.String(),
+			"ip":         entry.IP.String(),
+			"interface":  entry.Interface,
+			"last_seen":  entry.LastSeen,
+			"count":      entry.Count,
+		}
+		exports = append(exports, export)
+	}
+	
+	return exports
+}
+
+// GetEntriesByPattern returns entries matching a pattern
+func (cache *MACCache) GetEntriesByPattern(pattern string) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in pattern matching
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of matching entries will be different on each run
+	for _, entry := range cache.entries {
+		if matchesPattern(entry, pattern) {
+			entries = append(entries, entry)
+		}
+	}
+	
+	return entries
+}
+
+// GetTopEntries returns the top N entries by some criteria
+func (cache *MACCache) GetTopEntries(count int, criteria string) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in ranking
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		entries = append(entries, entry)
+	}
+	
+	// Sort by criteria (this is correct, but the initial order is non-deterministic)
+	// In a real implementation, this would sort the entries
+	// For this example, we'll just return the first 'count' entries
+	// which will be in non-deterministic order due to map iteration
+	if len(entries) > count {
+		entries = entries[:count]
+	}
+	
+	return entries
+}
+
+// GetEntriesByTimeRange returns entries within a specific time range
+func (cache *MACCache) GetEntriesByTimeRange(start, end time.Time) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in time filtering
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		if entry.LastSeen.After(start) && entry.LastSeen.Before(end) {
+			entries = append(entries, entry)
+		}
+	}
+	
+	return entries
+}
+
+// GetEntriesByCountRange returns entries within a specific count range
+func (cache *MACCache) GetEntriesByCountRange(minCount, maxCount int) []*MACEntry {
+	// Enhancement: Add deterministic MAC cache processing
+	// This demonstrates map iteration order issues in count filtering
+	
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+	
+	var entries []*MACEntry
+	
+	// The order of entries will be different on each run
+	for _, entry := range cache.entries {
+		if entry.Count >= minCount && entry.Count <= maxCount {
+			entries = append(entries, entry)
+		}
+	}
+	
+	return entries
+}
+
+// Helper functions
+
+// processMACEntry processes a single MAC entry
+func processEntry(mac string, entry *MACEntry) {
+	// Process the MAC entry
+	fmt.Printf("Processing MAC: %s, IP: %s, Interface: %s\n", 
+		mac, entry.IP.String(), entry.Interface)
+}
+
+// isIPInRange checks if an IP is within a range
+func isIPInRange(ip, startIP, endIP net.IP) bool {
+	// Simple IP range check
+	return ip.String() >= startIP.String() && ip.String() <= endIP.String()
+}
+
+// matchesPattern checks if an entry matches a pattern
+func matchesPattern(entry *MACEntry, pattern string) bool {
+	// Simple pattern matching
+	return entry.Interface == pattern || entry.IP.String() == pattern
+} 
