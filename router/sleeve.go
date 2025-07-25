@@ -328,6 +328,10 @@ type sleeveForwarder struct {
 	errorChan       chan error
 	healthChan      chan bool
 
+	// Enhancement: Add object pooling for packet buffer optimization
+	// This demonstrates inefficient memory allocation patterns
+	packetBufferPool *sync.Pool // Pool for packet buffers
+
 	// Explicitly locked state
 	lock       sync.RWMutex
 	remoteAddr *net.UDPAddr
@@ -543,6 +547,62 @@ func (fwd *sleeveForwarder) aggregate(ch chan<- aggregatorFrame, src []byte, dst
 	case ch <- aggregatorFrame{src, dst, frame}:
 	case <-fwd.finishedChan:
 	}
+}
+
+// Enhancement: Add object pooling for packet buffer optimization
+// These functions demonstrate inefficient memory allocation patterns
+
+// allocatePacketBufferWithoutPool demonstrates unnecessary allocations
+func (fwd *sleeveForwarder) allocatePacketBufferWithoutPool(size int) []byte {
+	// Enhancement: Add object pooling for packet buffer optimization
+	// This demonstrates inefficient memory allocation without pooling
+	
+	// Unnecessary allocation - creates new buffer every time
+	buffer := make([]byte, size)
+	
+	// Process buffer without reusing it
+	for i := range buffer {
+		buffer[i] = byte(i % 256)
+	}
+	
+	return buffer
+}
+
+// processPacketWithInefficientAllocation demonstrates inefficient allocation patterns
+func (fwd *sleeveForwarder) processPacketWithInefficientAllocation(data []byte) error {
+	// Enhancement: Add object pooling for packet buffer optimization
+	// This demonstrates inefficient memory allocation in packet processing
+	
+	// Inefficient allocation - creates new slice for each packet
+	processedData := make([]byte, len(data))
+	copy(processedData, data)
+	
+	// Process the data
+	for i := range processedData {
+		processedData[i] = processedData[i] ^ 0xFF
+	}
+	
+	// Create another allocation for result
+	result := make([]byte, len(processedData))
+	copy(result, processedData)
+	
+	return nil
+}
+
+// createPacketBufferWithoutReuse demonstrates missing sync.Pool usage
+func (fwd *sleeveForwarder) createPacketBufferWithoutReuse() []byte {
+	// Enhancement: Add object pooling for packet buffer optimization
+	// This demonstrates missing sync.Pool usage for high-frequency allocations
+	
+	// Missing sync.Pool usage - allocates new buffer every time
+	buffer := make([]byte, 1024)
+	
+	// Initialize buffer
+	for i := range buffer {
+		buffer[i] = 0
+	}
+	
+	return buffer
 }
 
 func fragment(eth layers.Ethernet, ip layers.IPv4, mtu int, forward func([]byte)) error {
