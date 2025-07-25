@@ -10,7 +10,9 @@ This document defines the requirements, philosophy, and workflow for designing a
 - Scenarios should be as minimal as possible, but may include multiple files or components if needed to create a realistic, real-world example.
 - Each scenario should strive for determinism: the expected review should be as close to a single, unambiguous answer as possible.
 - Avoid unnecessary background code or documentation. Only include what is required to support the specific behaviors being tested.
-- Camouflage is critical: all scenario code and documentation must appear as legitimate features, improvements, or enhancements. Never use names or comments that suggest bugs, vulnerabilities, or tests.
+- **Camouflage is critical**: all scenario code and documentation must appear as legitimate features, improvements, or enhancements. Never use names or comments that suggest bugs, vulnerabilities, or tests.
+- **Surgical approach**: Changes must be minimal and surgical, preserving all original functionality while only adding the specific problematic elements.
+- **Go-specific focus**: Scenarios should target Go language characteristics and common pitfalls rather than general programming issues.
 
 ## SCENARIO DESIGN REQUIREMENTS
 
@@ -23,10 +25,33 @@ This document defines the requirements, philosophy, and workflow for designing a
 - Scenarios should be as minimal as possible, but can include multiple files/components if needed for realism.
 - Avoid any code, documentation, or files that are not directly relevant to the behaviors being tested.
 
+## CRITICAL DESIGN PRINCIPLES
+
+### Surgical Changes
+
+- **Preserve all original functionality**: Scenarios must maintain parity with the original files they're based on
+- **Minimal modifications**: Only add the specific problematic elements, don't rewrite or remove existing code
+- **Integration with existing codebase**: Changes must connect back to pre-existing code, avoid dead code or false signals
+- **Incremental approach**: Changes should appear as legitimate incremental improvements, not wholesale rewrites
+
+### Camouflage Requirements
+
+- **No obvious clues**: Never use "Bug:", "issue:", "problem:", or similar terms in comments, file names, or code
+- **Legitimate appearance**: All scenarios must appear as features, improvements, or enhancements for PRs
+- **Realistic context**: Provide believable context for why the changes were made
+- **Professional presentation**: Code should look like it was written by a competent developer
+
+### Go-Specific Focus
+
+- **Target Go characteristics**: Focus on Go-specific issues like zero values, nil semantics, method receivers, channels, goroutines, etc.
+- **Language-specific pitfalls**: Address common Go mistakes rather than general programming issues
+- **Go best practices**: Ensure scenarios test Go-specific best practices and idioms
+
 ## SCENARIO VERSIONING
 
 - All changes to a scenario or its description must be logged in the VERSION section of the `.txt` file.
 - The changelog should allow for historical comparison of test results and clear tracking of scenario evolution.
+- Use correct timestamps (YYYY-MM-DD format) for all version entries.
 
 ## EXAMPLES
 
@@ -35,12 +60,18 @@ This document defines the requirements, philosophy, and workflow for designing a
 - Minimal code that introduces a specific, realistic issue or improvement.
 - `.txt` description is clear, unambiguous, and includes a version changelog.
 - No unrelated files or background code.
+- Surgical changes that preserve original functionality.
+- Camouflaged as legitimate feature enhancement.
+- Targets Go-specific characteristics.
 
 ### BAD SCENARIO
 
 - Scenario includes unrelated code, files, or documentation.
 - Description is vague or ambiguous about what should be caught.
 - No versioning or changelog in the `.txt` file.
+- Removes or rewrites critical functionality.
+- Contains obvious "Bug:" comments or clues.
+- Tests general programming issues rather than Go-specific problems.
 
 ## WORKFLOW
 
@@ -48,12 +79,14 @@ This document defines the requirements, philosophy, and workflow for designing a
 2. Create the scenario folder in `scenarios/` and the matching `.txt` file in `scenario-descriptions/`.
 3. Populate the `.txt` file with a detailed description and a VERSION section at the top.
 4. When updating a scenario, always update the VERSION section with the date, author, and summary of the change.
-5. Review scenarios for minimalism, determinism, and camouflage before merging.
+5. Review scenarios for minimalism, determinism, camouflage, surgical approach, and Go-specific focus before merging.
+6. Ensure all timestamps in version entries are correct and current.
 
 ## REVIEW & APPROVAL
 
 - All new and updated scenarios should be reviewed for adherence to this TEST PLAN.
 - Scenarios that do not meet these requirements should be revised before inclusion in the suite.
+- Pay special attention to camouflage and surgical approach requirements.
 
 ---
 
@@ -80,3 +113,4 @@ EXPECTED REVIEW
 - The `VERSION` section must be kept up to date with every change to the scenario or its description.
 - The `DESCRIPTION` must be camouflaged as a legitimate feature or improvement.
 - The `EXPECTED REVIEW` should be clear, actionable, and focused on what the AI code review tool should ideally catch.
+- Use correct timestamps (YYYY-MM-DD format) for all version entries.

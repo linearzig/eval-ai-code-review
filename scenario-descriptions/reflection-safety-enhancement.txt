@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add dynamic field access capability for configuration by implementing reflection-based configuration parsing and field access to support flexible configuration management. This enhancement will improve configuration flexibility by allowing runtime inspection and modification of configuration structs through reflection, enabling dynamic configuration updates and validation.
+
+EXPECTED REVIEW
+A thorough code review should catch unsafe reflection usage and performance issues. The reviewer should identify that:
+
+1. The code uses reflection in hot paths, which can cause significant performance degradation
+2. Reflection-based type conversions are unsafe and can cause panics
+3. The code doesn't validate reflection results before using them
+4. Missing consideration for compile-time type safety vs runtime reflection
+
+The review should suggest:
+- Avoid reflection in hot paths - use it only for initialization or configuration
+- Validate reflection results before using them to prevent panics
+- Consider alternatives to reflection (interfaces, generics, code generation)
+- Cache reflection results when possible to avoid repeated reflection calls
+- Use reflection only when compile-time type safety cannot be achieved
+
+A good review comment would explain that reflection has significant performance overhead and should be avoided in performance-critical code paths. 

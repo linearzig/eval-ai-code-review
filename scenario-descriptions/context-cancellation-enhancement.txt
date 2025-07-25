@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add request cancellation support for HTTP endpoints by implementing context propagation and cancellation handling in HTTP handlers and API endpoints. This enhancement will improve user experience and system responsiveness by allowing long-running operations to be cancelled when clients disconnect or timeouts occur.
+
+EXPECTED REVIEW
+A thorough code review should catch missing context propagation and cancellation handling. The reviewer should identify that:
+
+1. The code doesn't use `context.Context` for request cancellation and timeout handling
+2. Long-running operations don't check for context cancellation via `ctx.Done()`
+3. The code doesn't propagate context to downstream operations or goroutines
+4. Missing `context.WithCancel` or `context.WithTimeout` for proper cancellation control
+
+The review should suggest:
+- Use `context.Context` as the first parameter in functions that can be cancelled
+- Check for cancellation with `select { case <-ctx.Done(): return ctx.Err() }` in long-running operations
+- Propagate context to all downstream calls and goroutines
+- Use `context.WithCancel` or `context.WithTimeout` to create cancellable contexts
+- Handle context cancellation gracefully and clean up resources
+
+A good review comment would explain that without context cancellation, long-running operations cannot be stopped when clients disconnect, leading to resource leaks and poor user experience. 

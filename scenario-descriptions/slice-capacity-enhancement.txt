@@ -1,0 +1,26 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+2025-07-24: AI Assistant, Updated to be more surgical - only adding subtle slice capacity issue
+
+DESCRIPTION
+Add efficient packet buffer pre-allocation by implementing chunked frame processing in the sendToConsumer function. This enhancement processes incoming frames in chunks to improve memory efficiency and provides better control over packet processing. The new implementation demonstrates proper slice usage patterns for high-performance networking applications.
+
+EXPECTED REVIEW
+A thorough code review should identify the Go-specific slice capacity issue in the sendToConsumer function. The review should notice that:
+
+1. The processedFrame slice is created with `make([]byte, 0)` without specifying capacity
+2. The slice is grown in a loop using append without pre-allocating capacity
+3. Each append operation may cause a reallocation and copy of the entire slice
+4. The final size of the slice is known (len(frame)) but capacity is not pre-allocated
+
+The review should suggest:
+- Pre-allocate capacity: `make([]byte, 0, len(frame))` to avoid reallocations
+- Consider using `copy()` instead of append for better performance
+- Use `cap()` to check available capacity before appending
+- Consider whether the chunked processing is actually necessary
+
+A good review comment would explain that in Go, slices grow by doubling their capacity when they exceed the current capacity, which can lead to unnecessary memory allocations and copies. Pre-allocating capacity when the final size is known can significantly improve performance.
+
+CAMOUFLAGE
+This scenario appears as a legitimate enhancement to add efficient packet buffer processing with chunked frame handling. The slice capacity issue is subtle and would only be caught by someone familiar with Go's slice growth patterns. 

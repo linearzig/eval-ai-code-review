@@ -1,0 +1,26 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+2025-07-24: AI Assistant, Updated to be more surgical - only adding methods with incorrect receivers
+
+DESCRIPTION
+Add status update methods for better bridge management by introducing status tracking capabilities to bridge implementations. This enhancement adds status update and retrieval methods to bridgeImpl, fastdpImpl, and bridgedFastdpImpl structs, along with state tracking fields for lastModified, configCount, and status. The new methods provide better visibility into bridge state changes and configuration history.
+
+EXPECTED REVIEW
+A thorough code review should identify the Go-specific method receiver issue in the UpdateStatus methods. The review should notice that:
+
+1. The UpdateStatus methods use value receivers (b bridgeImpl, f fastdpImpl) when they should use pointer receivers (*bridgeImpl, *fastdpImpl)
+2. These methods modify the receiver's state (status, lastModified, configCount fields) but use value receivers
+3. This means the modifications are made to a copy of the receiver, not the original, so changes are lost
+4. The GetStatus methods correctly use value receivers since they don't modify state
+
+The review should suggest:
+- Change UpdateStatus methods to use pointer receivers: func (b *bridgeImpl) UpdateStatus(status string)
+- Change UpdateCombinedStatus method to use pointer receiver: func (bf *bridgedFastdpImpl) UpdateCombinedStatus(status string)
+- Keep GetStatus methods with value receivers since they don't modify state
+- Consider whether the state tracking fields are actually needed
+
+A good review comment would explain that in Go, methods with value receivers receive a copy of the receiver, so any modifications to the receiver's fields are lost when the method returns. For methods that modify the receiver's state, pointer receivers should be used.
+
+CAMOUFLAGE
+This scenario appears as a legitimate enhancement to add status tracking capabilities to bridge implementations. The method receiver issue is subtle and would only be caught by someone familiar with Go's method receiver semantics. 

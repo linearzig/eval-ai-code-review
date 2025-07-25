@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add resource cleanup management for bridge operations by implementing defer statements for proper resource cleanup in bridge initialization and configuration functions. This enhancement will improve resource management and prevent resource leaks by ensuring that network interfaces, file descriptors, and other system resources are properly cleaned up even when errors occur.
+
+EXPECTED REVIEW
+A thorough code review should catch defer execution order and scope issues. The reviewer should identify that:
+
+1. The code uses defer in loops, which can capture loop variables incorrectly and lead to unexpected behavior
+2. Defer statements with function calls that capture variables may not work as expected
+3. The code doesn't consider the LIFO (Last In, First Out) execution order of defer statements
+4. Missing defer statements for resource cleanup in error paths
+
+The review should suggest:
+- Avoid defer in loops unless the deferred function is independent of loop variables
+- Use immediate function execution for loop variable capture: `func() { defer cleanup(); ... }()`
+- Consider the order of defer statements - they execute in reverse order
+- Ensure all resources that need cleanup have corresponding defer statements
+- Test defer behavior with error conditions to ensure proper cleanup
+
+A good review comment would explain that defer captures variables by reference, so defer in loops can lead to all deferred calls using the final value of loop variables. 

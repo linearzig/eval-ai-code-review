@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add multi-channel communication patterns for packet routing by implementing select statements to handle multiple channel operations simultaneously in packet forwarder goroutines. This enhancement will improve packet processing efficiency by allowing the system to respond to multiple types of events (data packets, control messages, heartbeats) without blocking on any single channel.
+
+EXPECTED REVIEW
+A thorough code review should catch select statement deadlocks and missing default cases. The reviewer should identify that:
+
+1. The code uses select without a default case, which can cause goroutines to block indefinitely
+2. The select statement doesn't handle all possible channel states, leading to potential deadlocks
+3. Missing consideration for channel closing and nil channel behavior in select statements
+4. The code doesn't implement proper timeout or cancellation mechanisms
+
+The review should suggest:
+- Add a default case to select statements to prevent indefinite blocking: `select { case <-ch: ... default: ... }`
+- Use `context.WithTimeout` or `time.After` for timeout handling in select statements
+- Handle channel closing properly by checking for closed channels
+- Consider using `select` with `ctx.Done()` for cancellation
+- Test select behavior with different channel states (nil, closed, buffered)
+
+A good review comment would explain that select without default will block until at least one case is ready, which can cause deadlocks if all channels are blocked. 

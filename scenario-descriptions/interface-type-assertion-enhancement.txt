@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add dynamic type checking capability for packet decoding by implementing type assertions and type switches to handle different packet types and protocols dynamically. This enhancement will improve packet processing flexibility by allowing the system to handle various packet formats and protocols through runtime type checking and conversion.
+
+EXPECTED REVIEW
+A thorough code review should catch unsafe type assertions and missing error handling. The reviewer should identify that:
+
+1. The code uses type assertions without the comma-ok idiom, which can cause panics
+2. Type switches don't handle all possible cases or don't use the comma-ok idiom
+3. The code doesn't check if type assertions succeed before using the result
+4. Missing consideration for performance implications of type assertions in hot paths
+
+The review should suggest:
+- Always use the comma-ok idiom for type assertions: `if value, ok := interface{}.(Type); ok { ... }`
+- Handle all cases in type switches, including the default case
+- Check type assertion success before using the result to avoid panics
+- Consider performance implications - type assertions have runtime cost
+- Use type switches instead of multiple type assertions when checking multiple types
+
+A good review comment would explain that type assertions without the comma-ok idiom will panic if the assertion fails, which can crash the program. 

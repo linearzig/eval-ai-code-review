@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add object pooling for packet buffer optimization by implementing sync.Pool for high-frequency packet buffer allocation and reuse. This enhancement will improve performance and reduce garbage collection pressure by reusing packet buffers instead of allocating new ones for each packet, particularly beneficial for high-throughput packet processing scenarios.
+
+EXPECTED REVIEW
+A thorough code review should catch inefficient memory allocation patterns and missing object pooling. The reviewer should identify that:
+
+1. The code allocates new buffers for each packet instead of reusing them through object pooling
+2. High-frequency allocations in hot paths can cause excessive garbage collection
+3. The code doesn't use `sync.Pool` for frequently allocated and deallocated objects
+4. Missing consideration for the trade-off between memory usage and allocation frequency
+
+The review should suggest:
+- Use `sync.Pool` for objects that are frequently allocated and deallocated
+- Implement proper pool cleanup and object lifecycle management
+- Consider the memory overhead of keeping objects in the pool vs allocation cost
+- Profile memory usage to identify allocation hotspots
+- Ensure pool objects are properly reset before reuse
+
+A good review comment would explain that frequent allocations in hot paths can cause garbage collection pressure and performance degradation, which object pooling can help mitigate. 

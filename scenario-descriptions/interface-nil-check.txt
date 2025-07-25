@@ -1,0 +1,26 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+2025-07-24: AI Assistant, Updated to be more surgical - only adding subtle interface nil check
+
+DESCRIPTION
+Add packet handler interface for better packet processing by introducing a PacketHandler interface and concrete implementation. This enhancement adds a packet handler field to the SleeveOverlay struct and includes validation logic to ensure proper packet processing capabilities. The new interface provides a clean abstraction for handling different packet types and improves code organization.
+
+EXPECTED REVIEW
+A thorough code review should identify the Go-specific interface nil vs concrete nil confusion in the validatePacketHandler function. The review should notice that:
+
+1. The function assigns a nil concrete value (*EthernetHandler) to an interface{} field
+2. The subsequent nil check on the interface will return false even though the concrete value is nil
+3. This demonstrates the classic Go pitfall where interface{} != nil even when the underlying concrete value is nil
+4. The code will continue execution as if the handler is valid, potentially causing runtime panics
+
+The review should suggest:
+- Use type assertions with the "comma ok" idiom to safely check concrete values
+- Consider using reflection to properly check if the interface contains a nil concrete value
+- Add explicit nil checks on the concrete type before assignment
+- Consider using a more specific interface type instead of interface{}
+
+A good review comment would explain that in Go, an interface is only nil if both the type and value are nil, so checking interface{} for nil when it contains a nil concrete value will return false, leading to unexpected behavior.
+
+CAMOUFLAGE
+This scenario appears as a legitimate enhancement to add packet processing capabilities with proper interface abstraction. The interface nil check issue is subtle and would only be caught by someone familiar with Go's interface semantics. 

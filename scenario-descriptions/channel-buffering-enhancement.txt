@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add buffered channel support for better packet throughput by implementing buffered channels for packet aggregation and control message communication between goroutines. This enhancement will improve performance by reducing blocking and improving concurrency in packet processing by allowing multiple packets to be queued before processing.
+
+EXPECTED REVIEW
+A thorough code review should catch channel buffering issues that can cause deadlocks and performance problems. The reviewer should identify that:
+
+1. The code uses unbuffered channels (`chan<- aggregatorFrame`) which can cause deadlocks when senders and receivers are not perfectly synchronized
+2. The code doesn't consider appropriate buffer sizes for the expected message volume
+3. Unbuffered channels force synchronous communication, which can bottleneck high-throughput packet processing
+4. Missing buffer size considerations for different types of messages (control vs data)
+
+The review should suggest:
+- Use buffered channels when senders and receivers operate at different speeds: `make(chan aggregatorFrame, bufferSize)`
+- Choose appropriate buffer sizes based on expected message volume and processing speed
+- Consider using different buffer sizes for different message types
+- Ensure buffer sizes are not too large to avoid memory issues or too small to avoid blocking
+- Add monitoring or metrics to track channel usage and identify bottlenecks
+
+A good review comment would explain that unbuffered channels require both sender and receiver to be ready simultaneously, which can cause deadlocks in complex concurrent systems. 

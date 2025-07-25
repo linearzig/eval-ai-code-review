@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add composition-based bridge inheritance by implementing type embedding in bridge implementation structs to share common functionality between different bridge types. This enhancement will improve code reuse and maintainability by allowing bridge implementations to inherit common methods and fields through Go's composition mechanism.
+
+EXPECTED REVIEW
+A thorough code review should catch type embedding misuse and method shadowing issues. The reviewer should identify that:
+
+1. The code embeds types that have methods with the same name, causing method shadowing
+2. The embedded type's methods are not accessible or are being overridden unexpectedly
+3. The code doesn't understand the difference between embedding and inheritance
+4. Missing consideration for whether embedding is the right approach vs composition
+
+The review should suggest:
+- Be aware of method shadowing when embedded types have methods with the same name
+- Use explicit field names instead of embedding when you want to access embedded type methods
+- Consider whether embedding provides the intended behavior or if composition is better
+- Document the relationship between embedded types and their methods
+- Test method resolution to ensure the correct methods are being called
+
+A good review comment would explain that embedded type methods can be shadowed by the outer type's methods, and that embedding is composition, not inheritance. 

@@ -3,7 +3,16 @@
 # LinearB AI Code Review Testing Suite Automation Script
 # Inspired by benchmarking/run.sh
 #
-# IMPORTANT:
+# IMPORTANT USAGE NOTE ("slate" issue):
+#   - All flags (e.g., --no-linearb) MUST be placed BEFORE or AFTER the main command and its arguments.
+#   - Do NOT put flags between the command and its required arguments.
+#   - Example (works):
+#       ./run_tests.sh --no-linearb --deploy-scenario golang-weave zero-value-initialization
+#       ./run_tests.sh --deploy-scenario golang-weave zero-value-initialization --no-linearb
+#   - Example (does NOT work):
+#       ./run_tests.sh --deploy-scenario --no-linearb golang-weave zero-value-initialization
+#   - This is a known limitation of the argument parsing logic (the "slate" issue).
+#
 #   - You must set WORKSPACE_DIR in this script to a directory outside this repo (default: $WORKSPACE_DIR)
 #   - You must set your GITHUB_TOKEN environment variable for API access (required for opening PRs and evaluation)
 
@@ -18,7 +27,7 @@ WORKSPACE_DIR="/Users/zig/azigler/ai-code-review/eval-workspace"
 REPO_OWNER="linearzig"
 REPO_NAME="eval-ai-code-review"
 
-
+source env.sh
 
 PROJECTS_DIR="projects"
 SCENARIOS_DIR="scenarios"
@@ -38,6 +47,8 @@ print_success() { echo -e "[SUCCESS] $1" >&2; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "[ERROR] $1" >&2; }
 
+NO_LINEARB=false
+
 # Usage/help message
 show_help() {
   echo "LinearB AI Code Review Testing Suite Automation Script"
@@ -50,6 +61,7 @@ show_help() {
   echo "  --delete-branch <branch>            Delete a branch (cleanup)"
   echo "  --list-projects                     List all available base projects"
   echo "  --list-scenarios                    List all available scenarios"
+  echo "  --no-linearb                        Append 'no-linearb' to PR titles to skip LinearB reviews"
   echo "  --help                              Show this help message"
   echo ""
   echo "IMPORTANT:"
@@ -60,6 +72,7 @@ show_help() {
   echo "Examples:"
   echo "  $0 --deploy-project hello-world"
   echo "  $0 --deploy-scenario hello-world task-removal-enhancement"
+  echo "  $0 --deploy-scenario --no-linearb hello-world task-removal-enhancement"
   echo "  $0 --delete-branch project-hello-world"
   echo "  $0 --delete-branch hello-world-task-removal-enhancement-xyz789"
   echo ""
@@ -184,11 +197,17 @@ deploy_scenario() {
   print_success "Deployed scenario $scenario_name on $project_name to branch $branch_name"
 
   # Open PR with base branch as project branch
-  local pr_url=$(open_pr "$branch_name" "Apply scenario $scenario_name to $project_name" "Automated PR for $branch_name" "$base_branch")
+  local pr_title="Apply scenario $scenario_name to $project_name"
+  if [ "$NO_LINEARB" = true ]; then
+    pr_title="$pr_title [no-linearb]"
+    print_status "Appending 'no-linearb' to PR title to skip LinearB review."
+  fi
+  local pr_url=$(open_pr "$branch_name" "$pr_title" "Automated PR for $branch_name" "$base_branch")
   if [ -n "$pr_url" ]; then
     # Evaluate PR
-    print_status "Running eval_test.sh for $pr_url ..."
-    "$OLDPWD/eval_test.sh" "$pr_url" "$project_name" "$scenario_name"
+    #print_status "Running eval_test.sh for $pr_url ..."
+    #"$OLDPWD/eval_test.sh" "$pr_url" "$project_name" "$scenario_name"
+    :
   fi
   cd - > /dev/null
 }
@@ -210,6 +229,31 @@ main() {
     exit 0
   fi
 
+  # Parse flags and positional arguments
+  local args=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --no-linearb)
+        NO_LINEARB=true
+        ;;
+      --deploy-project|--deploy-scenario|--delete-branch)
+        args+=("$1")
+        # Add up to 2 more positional args if present
+        if [[ $# -ge 2 ]]; then args+=("$2"); shift; fi
+        if [[ ($1 == "--deploy-scenario") && ($# -ge 2) ]]; then args+=("$3"); shift; fi
+        ;;
+      --list-projects|--list-scenarios|--help)
+        args+=("$1")
+        ;;
+      *)
+        args+=("$1")
+        ;;
+    esac
+    shift
+  done
+
+  # Now process the main command
+  set -- "${args[@]}"
   while [[ $# -gt 0 ]]; do
     case $1 in
       --deploy-project)
@@ -242,6 +286,7 @@ main() {
         exit 1
         ;;
     esac
+    shift
   done
 }
 

@@ -1,0 +1,24 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add sophisticated worker coordination for packet processing by implementing a worker pool pattern with multiple goroutines for enhanced packet handling and parallel processing. This enhancement will improve packet processing throughput by utilizing multiple worker goroutines with coordinated communication channels and synchronization mechanisms for better resource utilization.
+
+EXPECTED REVIEW
+A thorough code review should catch complex goroutine synchronization issues and race conditions. The reviewer should identify that:
+
+1. The code has race conditions when accessing shared state without proper synchronization
+2. Improper WaitGroup usage can lead to goroutine leaks or premature termination
+3. Channel management issues can cause deadlocks or goroutine leaks
+4. Missing proper cleanup mechanisms for worker goroutines
+
+The review should suggest:
+- Use proper synchronization (mutexes, atomic operations) for shared state access
+- Ensure WaitGroup.Add() is called before starting goroutines, not inside them
+- Implement proper channel cleanup and goroutine termination signals
+- Use context.Context for goroutine lifecycle management
+- Add proper error handling and recovery mechanisms for worker goroutines
+- Consider using errgroup for coordinated goroutine management
+
+A good review comment would explain that race conditions can cause unpredictable behavior and data corruption, while improper goroutine cleanup can lead to resource leaks and system instability. 

@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add goroutine lifecycle management for packet forwarders by implementing proper cleanup mechanisms and termination signals for packet processing goroutines. This enhancement will prevent resource leaks and improve system stability by ensuring that all goroutines are properly terminated when packet forwarders are stopped or when connections are closed.
+
+EXPECTED REVIEW
+A thorough code review should catch goroutine leak issues that can cause resource exhaustion. The reviewer should identify that:
+
+1. The code starts goroutines without providing a way to terminate them (missing done channels or context cancellation)
+2. Goroutines are started but never receive termination signals, leading to infinite loops
+3. The code doesn't use `sync.WaitGroup` or similar mechanisms to track goroutine completion
+4. Missing cleanup in error paths or when forwarders are stopped
+
+The review should suggest:
+- Always provide a termination mechanism for goroutines (done channel, context cancellation, or signal channel)
+- Use `sync.WaitGroup` to track goroutine completion and ensure all goroutines finish before cleanup
+- Implement proper cleanup in defer statements or error handlers
+- Consider using `context.Context` for cancellation across multiple goroutines
+- Add logging or monitoring to track goroutine lifecycle
+
+A good review comment would explain that goroutines that never terminate will continue running until the program exits, potentially causing memory leaks and resource exhaustion. 

@@ -1,0 +1,23 @@
+PROJECT: golang-weave
+VERSION
+2025-07-24: AI Assistant, Initial scenario creation
+
+DESCRIPTION
+Add deterministic MAC cache processing by implementing sorted iteration over MAC address cache entries to ensure consistent processing order. This enhancement will improve debugging and testing by providing predictable output order when processing MAC cache entries, making it easier to reproduce issues and verify cache behavior.
+
+EXPECTED REVIEW
+A thorough code review should catch the assumption of deterministic map iteration order. The reviewer should identify that:
+
+1. The code iterates over maps without sorting, assuming a deterministic order that doesn't exist in Go
+2. Map iteration order is randomized in Go for security reasons and can change between runs
+3. The code doesn't use `sort` package to sort keys before iteration when deterministic order is needed
+4. Missing consideration for whether deterministic order is actually required
+
+The review should suggest:
+- Use `sort.Strings()` or `sort.Ints()` to sort map keys before iteration when deterministic order is needed
+- Consider whether deterministic order is actually required for the use case
+- Use `maps.Keys()` (Go 1.21+) or manually collect keys for sorting
+- Document when deterministic order is required vs when random order is acceptable
+- Consider performance implications of sorting large maps
+
+A good review comment would explain that Go randomizes map iteration order to prevent hash collision attacks, so code that assumes deterministic order will behave differently between runs. 
