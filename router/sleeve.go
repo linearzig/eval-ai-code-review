@@ -328,6 +328,13 @@ type sleeveForwarder struct {
 	errorChan       chan error
 	healthChan      chan bool
 
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates complex goroutine synchronization and race conditions
+	workerPool     chan struct{} // Worker pool semaphore
+	workerWg       sync.WaitGroup // Worker coordination
+	coordinatorWg  sync.WaitGroup // Coordinator coordination
+	workerChannels []chan struct{} // Worker communication channels
+
 	// Explicitly locked state
 	lock       sync.RWMutex
 	remoteAddr *net.UDPAddr
@@ -543,6 +550,106 @@ func (fwd *sleeveForwarder) aggregate(ch chan<- aggregatorFrame, src []byte, dst
 	case ch <- aggregatorFrame{src, dst, frame}:
 	case <-fwd.finishedChan:
 	}
+}
+
+// Enhancement: Add sophisticated worker coordination for packet processing
+// These functions demonstrate complex goroutine synchronization and race conditions
+
+// startWorkerPool demonstrates improper WaitGroup usage
+func (fwd *sleeveForwarder) startWorkerPool(numWorkers int) {
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates improper WaitGroup usage and race conditions
+	
+	// Initialize worker pool
+	fwd.workerPool = make(chan struct{}, numWorkers)
+	fwd.workerChannels = make([]chan struct{}, numWorkers)
+	
+	// Start workers without proper coordination
+	for i := 0; i < numWorkers; i++ {
+		fwd.workerChannels[i] = make(chan struct{})
+		
+		// Improper WaitGroup usage - not waiting for workers to start
+		go fwd.worker(i, fwd.workerChannels[i])
+	}
+}
+
+// worker demonstrates race conditions in worker coordination
+func (fwd *sleeveForwarder) worker(id int, done chan struct{}) {
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates race conditions in worker coordination
+	
+	// Race condition - accessing shared state without proper synchronization
+	fwd.workerWg.Add(1)
+	defer fwd.workerWg.Done()
+	
+	// Worker processing loop
+	for {
+		select {
+		case <-fwd.workerPool:
+			// Process packet without proper error handling
+			fwd.processPacketWithRaceCondition()
+		case <-done:
+			return
+		}
+	}
+}
+
+// processPacketWithRaceCondition demonstrates race conditions
+func (fwd *sleeveForwarder) processPacketWithRaceCondition() {
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates race conditions in packet processing
+	
+	// Race condition - accessing shared state without locks
+	// This can cause data races when multiple workers access simultaneously
+	fwd.mtu++ // Race condition: multiple goroutines can modify this
+	
+	// Process packet
+	time.Sleep(10 * time.Millisecond)
+	
+	// Another race condition
+	fwd.mtu-- // Race condition: multiple goroutines can modify this
+}
+
+// coordinateWorkers demonstrates improper channel management
+func (fwd *sleeveForwarder) coordinateWorkers() {
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates improper channel management and goroutine leaks
+	
+	// Start coordinator without proper cleanup
+	fwd.coordinatorWg.Add(1)
+	go func() {
+		defer fwd.coordinatorWg.Done()
+		
+		// Coordinator loop without proper termination
+		for {
+			// Send work to workers without checking if they're ready
+			select {
+			case fwd.workerPool <- struct{}{}:
+				// Work sent
+			default:
+				// Channel full - potential deadlock
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+	}()
+}
+
+// stopWorkers demonstrates improper cleanup
+func (fwd *sleeveForwarder) stopWorkers() {
+	// Enhancement: Add sophisticated worker coordination for packet processing
+	// This demonstrates improper cleanup and potential goroutine leaks
+	
+	// Signal workers to stop
+	for _, ch := range fwd.workerChannels {
+		close(ch) // Close channels to signal workers
+	}
+	
+	// Improper cleanup - not waiting for workers to finish
+	// This can lead to goroutine leaks
+	// fwd.workerWg.Wait() // Missing wait
+	
+	// Close worker pool without proper coordination
+	close(fwd.workerPool)
 }
 
 func fragment(eth layers.Ethernet, ip layers.IPv4, mtu int, forward func([]byte)) error {
