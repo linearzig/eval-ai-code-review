@@ -2,7 +2,9 @@ package router
 
 import (
 	"bytes"
+	"fmt"
 	"net"
+	"reflect"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -27,6 +29,95 @@ func (dec *EthernetDecoder) DecodeLayers(data []byte) {
 	// cannot decode a layer beyond the ones we specified when
 	// setting up the parser.
 	dec.parser.DecodeLayers(data, &dec.decoded)
+}
+
+// Enhancement: Add dynamic type checking capability for packet decoding
+// This demonstrates unsafe type assertions and type switches
+
+// PacketType represents different packet types
+type PacketType interface {
+	GetType() string
+	GetData() []byte
+}
+
+// EthernetPacket implements PacketType
+type EthernetPacket struct {
+	Type string
+	Data []byte
+}
+
+func (ep *EthernetPacket) GetType() string {
+	return ep.Type
+}
+
+func (ep *EthernetPacket) GetData() []byte {
+	return ep.Data
+}
+
+// IPPacket implements PacketType
+type IPPacket struct {
+	Type string
+	Data []byte
+}
+
+func (ip *IPPacket) GetType() string {
+	return ip.Type
+}
+
+func (ip *IPPacket) GetData() []byte {
+	return ip.Data
+}
+
+// processPacketWithUnsafeTypeAssertion demonstrates unsafe type assertions
+func (dec *EthernetDecoder) processPacketWithUnsafeTypeAssertion(packet interface{}) error {
+	// Enhancement: Add dynamic type checking capability for packet decoding
+	// This demonstrates unsafe type assertions without proper error handling
+	
+	// Unsafe type assertion - will panic if packet is not *EthernetPacket
+	ethPacket := packet.(*EthernetPacket)
+	
+	// Process the packet without checking if the assertion succeeded
+	fmt.Printf("Processing Ethernet packet: %s\n", ethPacket.GetType())
+	
+	// Another unsafe type assertion - will panic if packet is not *IPPacket
+	ipPacket := packet.(*IPPacket)
+	
+	// Process the packet without checking if the assertion succeeded
+	fmt.Printf("Processing IP packet: %s\n", ipPacket.GetType())
+	
+	return nil
+}
+
+// processPacketWithInefficientTypeSwitch demonstrates inefficient type switches
+func (dec *EthernetDecoder) processPacketWithInefficientTypeSwitch(packet interface{}) error {
+	// Enhancement: Add dynamic type checking capability for packet decoding
+	// This demonstrates inefficient type switches using reflection
+	
+	// Inefficient type switch using reflection
+	switch reflect.TypeOf(packet).String() {
+	case "*router.EthernetPacket":
+		ethPacket := packet.(*EthernetPacket)
+		fmt.Printf("Processing Ethernet packet: %s\n", ethPacket.GetType())
+	case "*router.IPPacket":
+		ipPacket := packet.(*IPPacket)
+		fmt.Printf("Processing IP packet: %s\n", ipPacket.GetType())
+	default:
+		return fmt.Errorf("unknown packet type: %T", packet)
+	}
+	
+	return nil
+}
+
+// validatePacketType demonstrates missing ok checks in type assertions
+func (dec *EthernetDecoder) validatePacketType(packet interface{}) bool {
+	// Enhancement: Add dynamic type checking capability for packet decoding
+	// This demonstrates missing ok checks in type assertions
+	
+	// Missing ok check in type assertion
+	ethPacket := packet.(*EthernetPacket)
+	
+	// This will panic if packet is not *EthernetPacket
+	return ethPacket != nil
 }
 
 func (dec *EthernetDecoder) PacketKey() (key PacketKey) {
