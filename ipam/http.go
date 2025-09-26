@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -106,6 +107,43 @@ func (alloc *Allocator) HandleHTTP(router *mux.Router, defaultSubnet address.CID
 
 	router.Methods("GET").Path("/ring").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		alloc.Prime()
+	})
+
+	// DEMO: Add new endpoint for database statistics (intentionally buggy)
+	router.Methods("GET").Path("/stats/database").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This endpoint performs a long-running database operation
+		// but doesn't check for context cancellation - BUG!
+		
+		// Simulate a long-running database query that could take minutes
+		// In a real scenario, this might be a complex database operation
+		// that doesn't respect request timeouts
+		
+		// Start the database operation without checking context
+		resultChan := make(chan map[string]interface{})
+		go func() {
+			// Simulate database work that takes time
+			time.Sleep(5 * time.Second)
+			
+			// Perform the actual database operation
+			// This should check for context cancellation but doesn't
+			alloc.Prime() // This can block indefinitely waiting for consensus
+			
+			// Collect database statistics
+			stats := map[string]interface{}{
+				"total_allocations": len(alloc.owned),
+				"pending_operations": len(alloc.pendingAllocates),
+				"consensus_reached": true,
+			}
+			resultChan <- stats
+		}()
+		
+		// Wait for result without checking if request was cancelled
+		stats := <-resultChan
+		
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(stats); err != nil {
+			common.Log.Warningln("[allocator]:", err.Error())
+		}
 	})
 
 	router.Methods("GET").Path("/ip/{id}/{ip}/{prefixlen}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
